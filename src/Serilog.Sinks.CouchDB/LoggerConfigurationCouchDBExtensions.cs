@@ -53,9 +53,8 @@ namespace Serilog
             if (databaseUsername == null && databasePassword != null) throw new ArgumentNullException("databaseUsername");
 
             var defaultedPeriod = period ?? CouchDBSink.DefaultPeriod;
-            return loggerConfiguration.Sink(
-                new CouchDBSink(databaseUrl, batchPostingLimit, defaultedPeriod, formatProvider, databaseUsername, databasePassword),
-                restrictedToMinimumLevel);
+            var sink = new CouchDBSink(databaseUrl, batchPostingLimit, defaultedPeriod, formatProvider, databaseUsername, databasePassword);
+            return loggerConfiguration.Sink(sink,restrictedToMinimumLevel);
         }
     }
 }
