@@ -24,7 +24,7 @@ using Serilog.Formatting.Json;
 
 using System.Net.Http.Headers;
 using Serilog.Core;
-
+using Serilog.Formatting.Compact;
 
 namespace Serilog.Sinks.CouchDB
 {
@@ -89,10 +89,18 @@ namespace Serilog.Sinks.CouchDB
        
         public  async void Emit(LogEvent logEvent)
         {
+          
+            var payload2 = new StringWriter();
+        
+            payload2.Write("{\"docs\":[");
+            JsonValueFormatter jsonValueFormatter = new JsonValueFormatter();
+            CoachDBJsonFormatter formatter2 = new CoachDBJsonFormatter(jsonValueFormatter);
+
+
             var payload = new StringWriter();
             payload.Write("{\"docs\":[");
-            
-        
+
+
 
             JsonFormatter formatter = new JsonFormatter(
               omitEnclosingObject: true,
@@ -100,19 +108,39 @@ namespace Serilog.Sinks.CouchDB
                 renderMessage: true);
 
             var delimStart = "{";
-           
-                payload.Write(delimStart);
 
-           
+            payload.Write(delimStart);
+
+
             formatter.Format(logEvent, payload);
-                payload.Write(
-                    ",\"UtcTimestamp\":\"{0:u}\"}}",
-                    logEvent.Timestamp.ToUniversalTime().DateTime);
-                delimStart = ",{";
+            payload.Write(
+                ",\"UtcTimestamp\":\"{0:u}\"}}",
+                logEvent.Timestamp.ToUniversalTime().DateTime);
+            delimStart = ",{";
 
             payload.Write("]}");
 
-            var content = new StringContent(payload.ToString(), Encoding.UTF8, "application/json");
+            //   payload.Write(delimStart);
+
+
+            /*   
+                formatter.Format(logEvent, payload);
+                    payload.Write(
+                        ",\"UtcTimestamp\":\"{0:u}\"}",
+                        logEvent.Timestamp.ToUniversalTime().DateTime);
+                    delimStart = ",{";
+              */
+            /*
+          //{{"docs":[{"Timestamp":"2020-09-02T17:04:25.4863907+02:00","Level":"Error","MessageTemplate":"Hello {World} {array}!","RenderedMessage":"Hello \"World\" \"0102\"!","Properties":{"World":"World","array":"0102"},"UtcTimestamp":"2020-09-02 15:04:25Z"}}
+
+  */
+
+
+            formatter2.Format(logEvent, payload2);
+            payload2.Write("]}");
+            
+
+            var content = new StringContent(payload2.ToString(), Encoding.UTF8, "application/json");
             var result =  await _httpClient.PostAsync(BulkUploadResource, content);
             if (!result.IsSuccessStatusCode)
                 throw new LoggingFailedException(string.Format("Received failed result {0} when posting events to CouchDB", result.StatusCode));
