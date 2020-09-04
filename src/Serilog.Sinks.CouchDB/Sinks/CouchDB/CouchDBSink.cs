@@ -21,15 +21,17 @@ using System.Threading.Tasks;
 using Serilog.Debugging;
 using Serilog.Events;
 using Serilog.Formatting.Json;
-using Serilog.Sinks.PeriodicBatching;
+
 using System.Net.Http.Headers;
+using Serilog.Core;
+using Serilog.Formatting.Compact;
 
 namespace Serilog.Sinks.CouchDB
 {
     /// <summary>
     /// Writes log events as documents to a CouchDB database.
     /// </summary>
-    public class CouchDBSink : PeriodicBatchingSink
+    public class CouchDBSink : ILogEventSink
     {
         readonly IFormatProvider _formatProvider;
         readonly HttpClient _httpClient;
@@ -56,7 +58,7 @@ namespace Serilog.Sinks.CouchDB
         /// <param name="databaseUsername">The username to use in the HTTP Authentication header.</param>
         /// <param name="databasePassword">Password to use in the HTTP Authentication header</param>
         public CouchDBSink(string databaseUrl, int batchPostingLimit, TimeSpan period, IFormatProvider formatProvider, string databaseUsername, string databasePassword)
-            : base(batchPostingLimit, period)
+           
         {
             if (databaseUrl == null) throw new ArgumentNullException("databaseUrl");
             var baseAddress = databaseUrl;
@@ -74,51 +76,31 @@ namespace Serilog.Sinks.CouchDB
           }
         }
 
-        /// <summary>
-        /// Free resources held by the sink.
-        /// </summary>
-        /// <param name="disposing">If true, called because the object is being disposed; if false,
-        /// the object is being disposed from the finalizer.</param>
-        protected override void Dispose(bool disposing)
-        {
-            // First flush the buffer
-            base.Dispose(disposing);
-
-            if (disposing)
-                _httpClient.Dispose();
-        }
 
         /// <summary>
         /// Emit a batch of log events, running asynchronously.
         /// </summary>
-        /// <param name="events">The events to emit.</param>
-        /// <remarks>Override either <see cref="PeriodicBatchingSink.EmitBatch"/> or <see cref="PeriodicBatchingSink.EmitBatchAsync"/>,
+        /// <param name="logEvent">The events to emit.</param>
+        /// <remarks>Override either <see cref="ILogEventSink.Emit"/>,
         /// not both.</remarks>
-        protected override async Task EmitBatchAsync(IEnumerable<LogEvent> events)
+
+
+
+       
+        public  async void Emit(LogEvent logEvent)
         {
+          
             var payload = new StringWriter();
+        
             payload.Write("{\"docs\":[");
+            JsonValueFormatter jsonValueFormatter = new JsonValueFormatter();
+            CoachDBJsonFormatter formatter = new CoachDBJsonFormatter(jsonValueFormatter);
 
-            var formatter = new JsonFormatter(
-                omitEnclosingObject: true, 
-                formatProvider: _formatProvider,
-                renderMessage: true);
-
-            var delimStart = "{";
-            foreach (var logEvent in events)
-            {
-                payload.Write(delimStart);
-                formatter.Format(logEvent, payload);
-                payload.Write(
-                    ",\"UtcTimestamp\":\"{0:u}\"}}",
-                    logEvent.Timestamp.ToUniversalTime().DateTime);
-                delimStart = ",{";
-            }
-
+            formatter.Format(logEvent, payload);
             payload.Write("]}");
 
             var content = new StringContent(payload.ToString(), Encoding.UTF8, "application/json");
-            var result = await _httpClient.PostAsync(BulkUploadResource, content);
+            var result =  await _httpClient.PostAsync(BulkUploadResource, content);
             if (!result.IsSuccessStatusCode)
                 throw new LoggingFailedException(string.Format("Received failed result {0} when posting events to CouchDB", result.StatusCode));
         }
