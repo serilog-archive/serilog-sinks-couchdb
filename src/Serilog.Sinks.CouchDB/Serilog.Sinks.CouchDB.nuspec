@@ -7,8 +7,9 @@
     <description>Serilog event sink that writes to a CouchDB database over HTTP.</description>
     <language>en-US</language>
     <projectUrl>http://serilog.net</projectUrl>
-    <licenseUrl>http://www.apache.org/licenses/LICENSE-2.0</licenseUrl>
-    <iconUrl>http://serilog.net/images/serilog-sink-nuget.png</iconUrl>
+    <license type="expression">Apache-2.0</license>
+    
+    
     <tags>serilog logging couchdb</tags>
     <dependencies>
       <dependency id="Serilog" version="[1.5.1,2)" />

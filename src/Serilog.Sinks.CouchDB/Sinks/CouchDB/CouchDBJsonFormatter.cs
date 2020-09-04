@@ -74,6 +74,17 @@ namespace Serilog.Sinks.CouchDB
 
             // Better not to allocate an array in the 99.9% of cases where this is false
             // ReSharper disable once PossibleMultipleEnumeration
+
+            output.Write(",\"RenderedMessage\":\"");
+            foreach (var r in logEvent.MessageTemplate.Tokens)
+            {
+                var space = new StringWriter();
+                r.Render(logEvent.Properties, space);
+               output.Write(space.ToString().Replace("\"",""));
+            }
+            output.Write("\"");
+
+
             if (tokensWithFormat.Any())
             {
                 output.Write(",\"@r\":[");
